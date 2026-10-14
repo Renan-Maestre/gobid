@@ -1,0 +1,34 @@
+package jsonutils
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+
+	"github.com/Renan-Maestre/gobid/internal/validator"
+)
+
+func EncodeJson[T any](w http.ResponseWriter, r *http.Request, statusCode int, data T) error {
+	w.Header().Set("Content-Type", "Application/json")
+	w.WriteHeader(statusCode)
+
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		return fmt.Errorf("failed to encode json %w", err)
+	}
+
+	return nil
+}
+
+func DecodeValidJson[T validator.Validator](r *http.Request) (T, map[string]string, error) {
+	var data T
+
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		return data, nil, fmt.Errorf("decode json %w", err)
+	}
+
+	if problemes := data.Valid(r.Context()); len(problemes) > 0 {
+		return data, problemes, fmt.Errorf("invalid %T: %d problemes", data, len(problemes))
+	}
+
+	return data, nil, nil
+}
